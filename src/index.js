@@ -2,7 +2,7 @@
 
 // Import the dotenv library to load environment variables from a .env file
 import dotenv from "dotenv";
-
+import {app} from './app.js'
 // Import the connectDB function from the ./db/index.js file
 import connectDB from "./db/index.js";
 
@@ -15,10 +15,11 @@ dotenv.config({
 // This function returns a Promise
 connectDB()
     .then(() => {
+
         // If the connection is successful, start the server and listen for incoming requests
         // The server listens on the port specified in the environment variable PORT, or port 8000 if PORT is not defined
         app.listen(process.env.PORT || 8000, () => {
-            console.log(`server is running on port : ${process.env.PORT}`);
+            console.log(`server is running on http://localhost:${process.env.PORT}`);
         });
     })
     .catch((error) => {
