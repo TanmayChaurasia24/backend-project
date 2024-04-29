@@ -8,7 +8,7 @@ import connectDB from "./db/index.js";
 
 // Load environment variables from a .env file into process.env
 dotenv.config({
-    path: './env'
+    path: './.env'
 });
 
 // Call the connectDB function to establish a connection with the MongoDB database

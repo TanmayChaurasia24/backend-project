@@ -1,5 +1,5 @@
 // Importing the multer library for handling file uploads
-import multer, { memoryStorage } from "multer";
+import multer from "multer";
 
 // Configuring multer disk storage for storing uploaded files
 const storage = multer.diskStorage({
