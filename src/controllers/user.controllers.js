@@ -17,24 +17,24 @@ const registeruser = asynchandler(async (req, res, next) => {
     }
 
     // Check if files are uploaded and handle them
-    if (!req.files || !req.files.avatar || !req.files.coverimage) {
+    if (!req.files || !req.files.avatar) {
         throw new ApiError(400, "Avatar and cover image are required");
     }
 
     const avatarLocalPath = req.files.avatar[0].path;
-    const coverImageLocalPath = req.files.coverimage[0].path;
+    // const coverImageLocalPath = req.files.coverimage?.[0].path;
 
     // Check if avatar and cover image are present
-    if (!avatarLocalPath || !coverImageLocalPath) {
+    if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar and cover image files are required");
     }
 
     // Upload avatar and cover image to cloudinary
     const avatar = await uploadoncloudinary(avatarLocalPath);
-    const coverImage = await uploadoncloudinary(coverImageLocalPath);
+    // const coverImage = await uploadoncloudinary(coverImageLocalPath);
 
     // Check if avatar and cover image upload failed
-    if (!avatar || !coverImage) {
+    if (!avatar) {
         throw new ApiError(400, "Avatar and cover image upload failed");
     }
 
@@ -42,11 +42,17 @@ const registeruser = asynchandler(async (req, res, next) => {
     const user = await User.create({
         fullname,
         avatar: avatar.url,
-        coverimage: coverImage.url || "",
+        // coverimage: coverImage.url,
         email,
         password,
         username: username.toLowerCase(),
     });
+
+    const createduser = await User.findById(user._id).select("-password -refreshtoken");
+    
+    if(!createduser) {
+        throw new ApiError(500, "something went wrong while registering the user");
+    }
 
     // Send a success response
     return res.status(201).json(

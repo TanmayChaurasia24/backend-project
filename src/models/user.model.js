@@ -34,10 +34,6 @@ const userschema = new Schema({
         type: String,
         required: true,
     },
-    // Cover image field
-    coverimage: {
-        type: String,
-    },
     // Watch history field (array of Video references)
     watchhistory: [
         {
