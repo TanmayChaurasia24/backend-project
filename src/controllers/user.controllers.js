@@ -4,14 +4,35 @@ import { User } from '../models/user.model.js';
 import { uploadoncloudinary } from '../utils/cloudinary.js';
 import { apiresponse } from '../utils/apiresponse.js';
 
-const registeruser = asynchandler(async (req, res, next) => {
-    const { fullname, email, username, password } = req.body;
+// it requires user id
+const generateAccessTokenAndRefreshToken = async(userID) => {
+    try {
+        const user = await User.findById(userID) // find the user with this user id
+        const access_token = user.generateAccessToken()   // create a new token for the user's session this will return string representing the JWT
+        const refresh_token = user.generateRefreshToken() //  create a new refresh token, which will be used to regenerate a new access token.
 
+        user.refreshtoken = refresh_token // set the token
+        await user.save({validateBeforeState: false}) // we are saving the information  to the database validateBeforeState is used because if we will not use it then our database will generate error beacuse it is asking for every field defined in user model
+
+        return {access_token, refresh_token}
+        
+
+    } catch (error) {
+        throw new ApiError(500, "something went wrong while generating refresh and acess token")
+    }
+}
+
+// register user function
+const registeruser = asynchandler(async (req, res, next) => {
+    const { fullname, email, username, password } = req.body; // destructure  the request body to get the required fields 
+
+    // check all the fields are entered by the user or not 
     if ([fullname, email, username, password].some(field => !field || field.trim() === "")) {
         throw new ApiError(400, "All fields are required");
     }
 
-    const existed_user = await User.findOne({ $or: [{ username }, { email }] });
+    // check for the existing user in database,both email and username should be different for each user
+    const existed_user = await User.findOne({ $or: [{ username }, { email }] }); 
     if (existed_user) {
         throw new ApiError(409, "User with this email or username already exists. Try using another email or username.");
     }
@@ -60,4 +81,93 @@ const registeruser = asynchandler(async (req, res, next) => {
     );
 });
 
-export { registeruser };
+
+const loginuser = asynchandler(async (req, res) => {
+    // Request body contains user data including username/email and password
+    const { username, email, password } = req.body;
+
+    // Check if username or email is provided
+    if (!username || !email) {
+        throw new ApiError(400, "Username or email is required");
+    }
+
+    // Find the user by username or email in the database
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    });
+
+    // If user does not exist, throw an error
+    if (!user) {
+        throw new ApiError(404, "User does not exist");
+    }
+
+    // Check if the entered password matches the stored password
+    const isPasswordCorrect = await user.isPasswordCorrect(password);
+    
+    // If password is incorrect, throw an error
+    if (!isPasswordCorrect) {
+        throw new ApiError(403, 'Invalid credentials');
+    }
+
+    // Generate access token and refresh token for the user
+    const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+
+    // Find the logged-in user and exclude sensitive data like password and refresh token
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+    // Options for setting cookies
+    const options = {
+        httpOnly: true, // Only accessible via HTTP(S) and not by JavaScript
+        secure: true,   // Cookies will only be sent over HTTPS
+    };
+
+    // Set cookies with access token and refresh token, and send response
+    return res
+        .status(200)
+        .cookie("access token", accessToken, options) // Setting access token cookie
+        .cookie("refresh token", refreshToken, options) // Setting refresh token cookie
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser, // Sending user details in the response
+                    accessToken,
+                    refreshToken
+                },
+                "User logged in successfully"
+            )
+        );
+});
+
+
+
+const logoutuser = asynchandler(async (req, res) => {
+    // Update the user document in the database to remove the refresh token
+    await User.findByIdAndUpdate(
+        req.user._id, // Find the user by their ID
+        {
+            $set: {
+                refreshtoken: undefined // Set the refresh token field to undefined
+            }
+        },
+        {
+            new: true // Return the updated document after the update operation
+        }
+    );
+
+    // Options for setting cookies
+    const options = {
+        httpOnly: true, // Only accessible via HTTP(S) and not by JavaScript
+        secure: true    // Cookies will only be sent over HTTPS
+    };
+
+    // Clear the access token and refresh token cookies
+    return res.status(200)
+        .clearCookie("accesstoken", options)   // Clear the access token cookie
+        .clearCookie("refreshtoken", options)  // Clear the refresh token cookie
+        .json(new ApiResponse(200, "User logged out successfully")); // Send a success response
+});
+
+
+
+export { registeruser, loginuser, logoutuser };
