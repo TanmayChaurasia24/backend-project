@@ -18,33 +18,40 @@
 
 // Error Handling: Any errors that occur during token verification or user retrieval result in throwing an ApiError with a status code of 401 (Unauthorized).
 
-
-import { ApiError } from "../utils/apierror.js";
+import jwt from "jsonwebtoken";
 import { asynchandler } from "../utils/asynchandler.js";
-import jwt from 'jsonwebtoken';
-import { User } from "../models/user.model.js";
+import { ApiError } from '../utils/apierror.js';
+import { User } from '../models/user.model.js';
 
-export const verifyJWT = asynchandler(async (req,res,next) => {
+export const verifyJWT = asynchandler(async (req, res, next) => {
     try {
-        const token = req.cookies?.accesstoken || req.header("Authorization")?.replace("Bearer","")
-        
-        if(!token) {
-            throw new ApiError(401, "unauthorized request")
+        // Extract token from cookies or Authorization header
+        const token = req.cookies?.accesstoken || (req.headers.authorization ? req.headers.authorization.replace("Bearer ", "") : null);
+
+        // Check if token exists
+        if (!token) {
+            throw new ApiError(401, "Unauthorized request");
         }
-    
-        const decodedtoken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-    
-        const user = await User.findById(decodedtoken?._id).select("-password -refreshtoken")
-    
-        if(!user) {
-            throw new ApiError(401, "invalid access token")
+
+        // Verify token
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+        // Find user corresponding to token
+        const user = await User.findById(decodedToken._id).select("-password -refreshtoken");
+
+        // Check if user exists
+        if (!user) {
+            throw new ApiError(401, "Invalid access token");
         }
-    
+
+        // Assign user to request object
         req.user = user;
-        next()
+        next();
     } catch (error) {
-        throw new ApiError(401, "invalid access token")
+        // Handle errors
+        throw new ApiError(401, "Invalid access token");
     }
-})
+});
+
 
 

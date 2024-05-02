@@ -4,17 +4,18 @@ import { User } from '../models/user.model.js';
 import { uploadoncloudinary } from '../utils/cloudinary.js';
 import { apiresponse } from '../utils/apiresponse.js';
 
+
 // it requires user id
 const generateAccessTokenAndRefreshToken = async(userID) => {
     try {
         const user = await User.findById(userID) // find the user with this user id
-        const access_token = user.generateAccessToken()   // create a new token for the user's session this will return string representing the JWT
-        const refresh_token = user.generateRefreshToken() //  create a new refresh token, which will be used to regenerate a new access token.
+        const accesstoken = user.generateAccessToken()   // create a new token for the user's session this will return string representing the JWT
+        const refreshtoken = user.generateRefreshToken() //  create a new refresh token, which will be used to regenerate a new access token.
 
-        user.refreshtoken = refresh_token // set the token
-        await user.save({validateBeforeState: false}) // we are saving the information  to the database validateBeforeState is used because if we will not use it then our database will generate error beacuse it is asking for every field defined in user model
+        user.refreshtoken = refreshtoken // set the token
+        await user.save({validateBeforeSave: false}) // we are saving the information  to the database validateBeforeState is used because if we will not use it then our database will generate error beacuse it is asking for every field defined in user model
 
-        return {access_token, refresh_token}
+        return {accesstoken, refreshtoken}
         
 
     } catch (error) {
@@ -87,7 +88,7 @@ const loginuser = asynchandler(async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if username or email is provided
-    if (!username || !email) {
+    if (!username && !email) {
         throw new ApiError(400, "Username or email is required");
     }
 
@@ -118,25 +119,26 @@ const loginuser = asynchandler(async (req, res) => {
     // Options for setting cookies
     const options = {
         httpOnly: true, // Only accessible via HTTP(S) and not by JavaScript
-        secure: true,   // Cookies will only be sent over HTTPS
+        secure: false,   // Cookies will only be sent over HTTPS
     };
 
     // Set cookies with access token and refresh token, and send response
     return res
-        .status(200)
-        .cookie("access token", accessToken, options) // Setting access token cookie
-        .cookie("refresh token", refreshToken, options) // Setting refresh token cookie
-        .json(
-            new ApiResponse(
-                200,
-                {
-                    user: loggedInUser, // Sending user details in the response
-                    accessToken,
-                    refreshToken
-                },
-                "User logged in successfully"
-            )
-        );
+    .status(200)
+    .cookie("accesstoken", accessToken, options) // Setting access token cookie
+    .cookie("refreshtoken", refreshToken, options)// Setting refresh token cookie
+    .json(
+        new apiresponse(
+            200,
+            {
+                user: loggedInUser, // Sending user details in the response
+                accessToken,
+                refreshToken
+            },
+            "User logged in successfully"
+        )
+    );
+
 });
 
 
@@ -158,14 +160,14 @@ const logoutuser = asynchandler(async (req, res) => {
     // Options for setting cookies
     const options = {
         httpOnly: true, // Only accessible via HTTP(S) and not by JavaScript
-        secure: true    // Cookies will only be sent over HTTPS
+        secure: false    // Cookies will only be sent over HTTPS
     };
 
     // Clear the access token and refresh token cookies
     return res.status(200)
         .clearCookie("accesstoken", options)   // Clear the access token cookie
         .clearCookie("refreshtoken", options)  // Clear the refresh token cookie
-        .json(new ApiResponse(200, "User logged out successfully")); // Send a success response
+        .json(new apiresponse(200, "User logged out successfully")); // Send a success response
 });
 
 

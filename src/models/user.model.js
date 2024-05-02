@@ -67,8 +67,11 @@ userschema.methods.isPasswordCorrect = async function(password) {
 }
 
 // Method to generate access token for the user
+// userschema: This likely refers to a schema defined using Mongoose, which is a popular Node.js library for MongoDB object modeling. In Mongoose, schemas define the structure of documents within a collection in MongoDB.
+
+// .methods.generateAccessToken: This part is defining a method named generateAccessToken that will be available on instances of the userschema model. The methods property in Mongoose allows you to define custom instance methods for documents created based on this schema.
 userschema.methods.generateAccessToken = async function() {
-    // Generating JWT token with user details and expiration time
+    // Generating JWT token with user details and expiration time .sign method is the method to make JWT token which takes token secret and expiry time 
     return jwt.sign(
         {
             _id: this._id,
