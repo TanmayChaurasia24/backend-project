@@ -26,9 +26,10 @@ import { User } from '../models/user.model.js';
 export const verifyJWT = asynchandler(async (req, res, next) => {
     try {
         // Extract token from cookies or Authorization header
-        const token = req.cookies?.accesstoken || (req.headers.authorization ? req.headers.authorization.replace("Bearer ", "") : null);
-
+        const token = req.cookies?.accesstoken || req.header("Authorization")?.replace("Bearer ","")
+        // const token = req.cookies.accesstoken
         // Check if token exists
+        console.log(token);
         if (!token) {
             throw new ApiError(401, "Unauthorized request");
         }
@@ -49,7 +50,7 @@ export const verifyJWT = asynchandler(async (req, res, next) => {
         next();
     } catch (error) {
         // Handle errors
-        throw new ApiError(401, "Invalid access token");
+        throw new ApiError(401, "Invalid access token catch");
     }
 });
 
