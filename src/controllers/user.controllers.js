@@ -4,6 +4,7 @@ import { User } from '../models/user.model.js';
 import { uploadoncloudinary } from '../utils/cloudinary.js';
 import { apiresponse } from '../utils/apiresponse.js';
 import jwt from  'jsonwebtoken';
+import { upload } from "../middlewares/multer.middleware.js";
 
 // it requires user id
 const generateAccessTokenAndRefreshToken = async(userID) => {
@@ -210,4 +211,85 @@ const refreshaccesstoken = asynchandler(async (req,res) => {
     })
 
 })
-export { registeruser, loginuser, logoutuser, refreshaccesstoken };
+
+
+const changecurrentpassword = asynchandler(async (req,res) => {
+    const {oldpassword, newpassword} = req.body// oldpass and newpass is entered by the user form frontend
+
+    const user = await User.findById(req.user?._id) // now we will find the user in database because user is already login we will put auth middleware in route thats why if user has arrived here that means he is logged in
+
+    const isPasswordCorrect = await user.isPasswordCorrect(oldpassword) // in user model we have defined ispasscorrect method so we will check weather the pass eneterd by the user is correct or not
+
+    if(!isPasswordCorrect) {
+        throw new ApiError(400, "invalid old password")
+    }
+
+    // change the pass
+    user.password = newpassword
+    await user.save({validateBeforeSave: false}) // save the user to database
+
+    return res.status(200)
+    .json(new apiresponse(200, {}, "password changed sucessfully"))
+})
+
+
+const getcurrentuser = asynchandler(async(req,res) => {
+    return res
+    .status(200)
+    .json(200, req.user, "current user fetched sucessfully")
+})
+
+
+const updateaccountdetail = asynchandler(async(req,res) => {
+    const {email,fullname} = req.body
+
+    if(!email && !fullname) {
+        throw new ApiError(400, "email and fullname is required")
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullname: fullname,
+                email: email,
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res.status(200)
+    .json(new apiresponse(200,user,"account details updated sucessfully"))
+})
+
+
+const updateuseravatar = asynchandler(async(req,res) => {
+    const avatarlocalpath = req.file?.path
+
+    if(!avatarlocalpath) {
+        throw new ApiError(400,'avatar file is missing')
+    }
+
+    const avatar = await uploadoncloudinary(avatarlocalpath)
+
+    if(!avatar.url) {
+        throw new ApiError(400, "error while uploading on avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar: avatar.url
+            }
+        },
+        {new :true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new apiresponse(200,user,"avatar uploaded"))
+})
+
+
+export { registeruser, loginuser, logoutuser, refreshaccesstoken, changecurrentpassword, getcurrentuser,updateaccountdetail,updateuseravatar };
