@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import userrouter from "./routes/user.routes.js";
+import commentrouter from "./routes/comments.routes.js"
 
 const app = express();
 
@@ -16,5 +17,6 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 app.use("/api/users", userrouter);
+app.use("api",commentrouter)
 
 export { app };
